@@ -1,0 +1,7 @@
+mplsoccer
+networkx
+numpy
+pandas
+streamlit
+gdown
+scikit-learn
