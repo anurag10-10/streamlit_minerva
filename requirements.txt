@@ -5,3 +5,4 @@ pandas
 streamlit
 gdown
 scikit-learn
+streamlit_shadcn_ui
