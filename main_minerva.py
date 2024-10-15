@@ -2,6 +2,10 @@ import re
 import pandas as pd
 import numpy as np
 import networkx as nx
+import matplotlib.pyplot as plt
+from matplotlib import patheffects as path_effects
+from mplsoccer import VerticalPitch, Pitch
+import streamlit as st
 
 def process_data(dataframe):
     # Regular expression pattern to extract minutes and seconds
@@ -209,6 +213,7 @@ def unique_jerseys(df, network_df):
 def calculate_goals(df):
     return df[(df['Event'] == 'Shot') & (df['Outcome'] == 'Goal')].shape[0]
 
+# STATS TABLE #
 
 def calculate_team_stats(df, df_opp):
     stats_data = {
@@ -305,3 +310,228 @@ def calculate_team_stats(df, df_opp):
     # Create the dataframe
     general_stats_df = pd.DataFrame(stats_data)
     return general_stats_df
+
+############################
+# SHOTS FUNCTIONS #
+############################
+
+# Define zones for shot categorization
+zones = {
+    'First 6 yd.': {'X_min': 114, 'X_max': 120, 'Y_min': 29, 'Y_max': 51.0},
+    'Second 6 yd.': {'X_min': 108, 'X_max': 114, 'Y_min': 30, 'Y_max': 50},
+    'Third 6 yd.': {'X_min': 102, 'X_max': 108, 'Y_min': 30, 'Y_max': 50},
+    'Zone 14': {'X_min': 84, 'X_max': 102, 'Y_min': 30, 'Y_max': 50},
+    'Left Wide Area \n of the box': {'X_min': 102, 'X_max': 120, 'Y_min': 18, 'Y_max': 30},
+    'Right Wide Area \n of the box': {'X_min': 102, 'X_max': 120, 'Y_min': 50, 'Y_max': 62},
+    'Left Upper Wing Area': {'X_min': 102, 'X_max': 120, 'Y_min': 0, 'Y_max': 18},
+    'Right Upper Wing Area': {'X_min': 102, 'X_max': 120, 'Y_min': 62, 'Y_max': 80},
+    'Left Att. \n Half Space': {'X_min': 84, 'X_max': 102, 'Y_min': 18, 'Y_max': 30},
+    'Right Att. \n Half Space': {'X_min': 84, 'X_max': 102, 'Y_min': 50, 'Y_max': 62},
+    'Right mid Wide Area': {'X_min': 84, 'X_max': 102, 'Y_min': 62, 'Y_max': 80}
+}
+
+# Define a function to process shot data
+def process_shots_df(df):
+    """
+    Processes the shot data from a given DataFrame, adds binning based on custom pitch divisions,
+    and resets the index.
+
+    Parameters:
+    df (pd.DataFrame): DataFrame containing event data with 'X', 'Y', and 'Event' columns.
+
+    Returns:
+    pd.DataFrame: Processed DataFrame with inverted coordinates, shot data, and bin columns.
+    """
+    
+    # Filter the dataframe to get only shots
+    shots_df = df[df['Event'] == 'Shot']
+    
+    # Invert the X and Y coordinates
+    shots_df.rename(columns={"X": "Y", "Y": "X"}, inplace=True)
+
+    # Define bins for the pitch divisions
+    y_bins = [120, 114, 108, 102, 84, 66]  # Custom bins for Y (formerly X)
+    x_bins = [18, 30, 50, 62, 80]          # Custom bins for X (formerly Y)
+
+    # Sort bins to ensure they are in ascending order
+    x_bins.sort()
+    y_bins.sort()
+
+    # Apply binning for both X and Y coordinates
+    shots_df["bins_x"] = pd.cut(shots_df["X"], bins=x_bins)
+    shots_df["bins_y"] = pd.cut(shots_df["Y"], bins=y_bins)
+
+    # Reset the index and rename the index column to 'shotID'
+    shots_df = shots_df.reset_index().rename(columns={'index': 'shotID'})
+    
+    return shots_df
+
+
+# Function to draw the pitch with divisions
+def soc_pitch_divisions(ax):
+    pitch = VerticalPitch(
+        pitch_type="statsbomb",
+        half=True,
+        goal_type='box',
+        linewidth=1.25,
+        line_color='grey',
+        pitch_color='white'
+    )
+    pitch.draw(ax=ax)
+    
+    ax.plot([18, 62], [84, 84], color='black', linewidth=1)
+    ax.plot([0, 80], [102, 102], color='black', linewidth=1)
+    ax.plot([30,50], [114, 114], color='black', linewidth=1)
+    ax.plot([30,50], [108, 108], color='black', linewidth=1)
+
+    ax.plot([18, 18], [84, 120], color='black', linewidth=1)
+    ax.plot([30, 30], [84, 120], color='black', linewidth=1)
+    ax.plot([50, 50], [84, 120], color='black', linewidth=1)
+    ax.plot([62, 62], [84, 120], color='black', linewidth=1)
+
+def categorize_shot(row, zones):
+    for zone, bounds in zones.items():
+        if (bounds['X_min'] <= row['Y'] <= bounds['X_max'] and
+            bounds['Y_min'] <= row['X'] <= bounds['Y_max']):
+            return zone
+    return np.nan  # If the shot doesn't fall into any defined zone
+
+# Function to plot shots
+def plot_shots_map(shots_df, color, ax):
+    shots_df['zone'] = shots_df.apply(categorize_shot, zones=zones, axis=1)
+    df_shots = shots_df.groupby('zone').size().reset_index(name='shot_count')
+    total_shots = df_shots['shot_count'].sum()
+    df_shots['shot_share'] = df_shots['shot_count'] / total_shots
+    df_shots['shot_share_percent'] = (df_shots['shot_share'] * 100).round(2)
+
+    df_shots['shot_scaled'] = df_shots['shot_share'] / df_shots['shot_share'].max()
+
+    soc_pitch_divisions(ax)
+
+    for counter, zone in enumerate(df_shots['zone']):
+        bounds = zones[zone]
+        ax.fill_between(
+            x=[bounds['Y_min'], bounds['Y_max']],
+            y1=bounds['X_min'],
+            y2=bounds['X_max'],
+            color=color,
+            alpha=df_shots['shot_scaled'].iloc[counter],
+            zorder=-1,
+            lw=0
+        )
+
+        if df_shots['shot_share'].iloc[counter] > .02:
+            ax.annotate(
+                xy=((bounds['Y_max'] + bounds['Y_min']) / 2, (bounds['X_max'] + bounds['X_min']) / 2),
+                text=f"{df_shots['shot_share'].iloc[counter]:.2%}",
+                ha="center",
+                va="center",
+                color="black",
+                size=8.5,
+                weight="bold",
+                zorder=3
+            )
+
+######################
+# Passmaps functions #
+######################
+            
+def passmaps(df_pass, team, player, pitch, pass_type):
+        """Plot the passmap for the selected team or player."""
+        
+        # Ensure that a team is selected
+        if not team:
+            st.warning('Please select a team to view the pass map.')
+            return  # Exit the function if no team is selected
+        
+        # Filter for the selected team
+        df_pass = df_pass[df_pass["Team"] == team]
+        
+        # If a player is selected, filter for that player
+        if player:
+            df_pass = df_pass[df_pass["Player"] == player]
+        
+        # Check if the filtered dataframe is empty
+        if len(df_pass) == 0:
+            st.warning(f'No pass data available for {team} {player if player else ""}')
+            return  # Exit the function if no data is available
+        
+        # Separate completed and incomplete passes
+        pass_comp_df = df_pass[df_pass['Outcome'] == 'Complete']
+        pass_incomp_df = df_pass[df_pass['Outcome'] == 'Incomplete']
+        
+        # Calculate pass accuracy
+        pass_accuracy = round((len(pass_comp_df) / len(df_pass)) * 100)
+        thresh = pass_accuracy - 70
+        
+        # Display pass stats
+        col1, col2, col3 = st.columns(3)
+        col1.metric(label="Total Passes", value=len(df_pass))
+        col2.metric(label="Complete", value=len(pass_comp_df))
+        col3.metric(label="Passing accuracy", value=f'{pass_accuracy}%')#, delta= f'{thresh}%')
+
+        # Create a new pitch for passes
+        pitch = Pitch(pitch_color='#a5c771', line_color='white', positional=False, stripe=True, corner_arcs=True)
+        fig_pass_map, ax_pass_map = pitch.draw(figsize=(8, 4))  # Smaller figure size
+
+        # Plot completed passes
+        pitch.arrows(pass_comp_df.X, pass_comp_df.Y, 
+                    pass_comp_df.endX, pass_comp_df.endY, color="black", ax=ax_pass_map, width=1)
+        pitch.scatter(pass_comp_df.X, pass_comp_df.Y, alpha=0.2, s=50, color="black", ax=ax_pass_map)  
+
+        # Plot incomplete passes
+        pitch.lines(pass_incomp_df.X, pass_incomp_df.Y,
+                    pass_incomp_df.endX, pass_incomp_df.endY,
+                    lw=1, color='grey', ax=ax_pass_map)
+        
+        pitch.scatter(pass_incomp_df.endX, pass_incomp_df.endY, s=20, color="grey", ax=ax_pass_map, marker='x')
+
+        # Update the title dynamically
+        #fig_pass_map.suptitle(f'{player if player else ""} {pass_type}', fontsize=15)
+        
+        # Show pass map plot
+        st.pyplot(fig_pass_map)
+
+# Generate types of passes
+
+def generate_pass_types(df1, df2):
+    # Merge the two dataframes
+    merged_df = pd.concat([df1, df2])
+
+    # Key passes (Passes and Long Kicks, Head Passes that are Key Passes)
+    keypass_df = merged_df[(merged_df["Event"].isin(['Pass', 'Long Kick', 'Head Pass']) & merged_df['Key Pass'])]
+
+    # Standard passes (excluding Long Kicks and Head Passes)
+    passes_df = merged_df.loc[merged_df["Event"] == 'Pass']
+
+    # Crosses
+    crosses_df = merged_df.loc[merged_df["Event"] == 'Cross']
+
+    # Set pieces (Free Kicks, Throw Ins, Goal Kicks, Corners)
+    setpieces_df = merged_df.loc[merged_df["Event"].isin(['Free Kick', 'Throw In', 'Goal Kick', 'Corner'])]
+
+    # Progressive passes (based on distance and a condition for being 'progressive')
+    prg_df = merged_df[(merged_df['Event']).isin(['Pass', 'Long Kick'])]
+
+    # Calculate distances from the beginning and end of the pass to a reference point (usually goal)
+    prg_df['beginning'] = np.sqrt(np.square(120 - prg_df['X']) + np.square(40 - prg_df['Y']))
+    prg_df['end'] = np.sqrt(np.square(120 - prg_df['endX']) + np.square(40 - prg_df['endY']))
+
+    # Reset index to ensure clean data
+    prg_df.reset_index(drop=True, inplace=True)
+
+    # Define progressive passes: end distance is less than 75% of the beginning distance
+    prg_df['progressive'] = [(prg_df['end'][x]) / (prg_df['beginning'][x]) < .75 for x in range(len(prg_df['beginning']))]
+
+    # Filter only the progressive passes and remove any where X is greater than 100
+    prg_passes_df = prg_df.loc[(prg_df['progressive'] == True) & (prg_df['X'] < 100)]
+
+    #passes entering final third
+    # Step 1: Define criteria for passes entering the final third
+    passes_df['enters_final_third'] = (passes_df['X'] < 80) & (passes_df['endX'] > 80)
+    # Step 2: Filter out passes entering the final third
+    passes_final_third_df = passes_df[passes_df['enters_final_third']]
+
+    #enters_final_third_df = (merged_df['X'] < 80) & (merged_df['endX'] > 80)
+    # Return all the relevant DataFrames
+    return passes_df, keypass_df, crosses_df, setpieces_df, prg_passes_df, passes_final_third_df

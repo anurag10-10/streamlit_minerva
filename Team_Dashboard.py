@@ -3,9 +3,12 @@ import streamlit as st
 import pandas as pd
 from mplsoccer import VerticalPitch
 import main_minerva
+import streamlit_shadcn_ui as ui
+
 st.set_page_config(
-    page_title="Multipage App",
-    page_icon="👋🏼"
+    page_title="Minerva App",
+    page_icon="👋🏼",
+    layout="centered"
 )
 
 # Load event data for both teams
@@ -27,7 +30,7 @@ shots_df = df[df['Event'] == 'Shot'].reset_index(drop=True)  # Save shot data
 team_names = df['Team'].unique()
 
 st.title(f'{team_name1} vs {team_name2}\nMatch Analysis')
-st.subheader("Filter to any team/player to see all of their shots taken")
+#st.subheader("Filter to any team/player to see all of their shots taken")
 
 # Add shot outcome options
 with st.sidebar:
@@ -53,7 +56,7 @@ def filter_data(df, team, player, outcomes):
 
 # Filter the data for shots based on team, player, and outcome
 filtered_shots_df = filter_data(shots_df, team, player, selected_outcomes)
-
+off_target = len(filtered_shots_df[filtered_shots_df['Outcome'] == 'Off Target'])
 # Create two columns for the visualizations
 col1, col2 = st.columns(2)
 
@@ -87,7 +90,7 @@ with col1:
         col1, col2 = st.columns(2)
         col1.metric(label="Total Shots", value=len(filtered_shots_df))
         col2.metric(label="Off Target", value=len(filtered_shots_df[filtered_shots_df['Outcome'] == 'Off Target']))
-    
+        #ui.metric_card(title="Total Shots", content=len(filtered_shots_df), description=f'Off Target - {off_target}')#, key="card1")
     plot_shots(filtered_shots_df, ax_shot_map, pitch)
 
     # Show shot plot
@@ -164,3 +167,9 @@ with col1:
 with col2:
     st.subheader(f'{team_name2} ' "Statistics")
     st.dataframe(main_minerva.calculate_team_stats(df_team2, df_team1))
+
+
+st.logo("baller_metrics_logo_bg.png")
+st.sidebar.markdown("@baller_metrics - Follow us on Instagram")
+ui.link_button(text="Visit our Instagram", url="https://www.instagram.com/baller_metrics/?igsh=MnBkOWw0aG01MXd4%2Fstreamlit-shadcn-ui", key="link_btn")
+
