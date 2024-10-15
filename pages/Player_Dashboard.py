@@ -9,6 +9,9 @@ import main_minerva
 import pickle
 import json
 import streamlit_shadcn_ui as ui
+import gdown
+import os
+
 
 # Load the data for both teams
 df1 = pd.read_csv("Minerva_vs_Sudeva_Minerva_data.csv")
@@ -228,8 +231,39 @@ with col2:
 # STATS AND RATINGS #
 ##########################
 st.title(f"Stats for {selected_player}")
+
+# Access the Google Drive link from Streamlit secrets
+url = st.secrets["url"]
+
+# Path where the model will be saved in the Streamlit Cloud environment
+model_path = 'player_ratings_prediction.pickle'
+
+# Function to download the model if not already downloaded
+def download_model(url, output_path):
+    if not os.path.exists(output_path):  # Check if model already exists
+        gdown.download(url, output_path, quiet=True, fuzzy=True, use_cookies=False)
+
+# Path where the model will be saved in the Streamlit Cloud environment
+model_path = 'player_ratings_prediction.pickle'
+
+# Download the model if it doesn't already exist
+download_model(st.secrets["url"], model_path)
+
+# Check if the file exists and has a reasonable size
+if os.path.exists(model_path) and os.path.getsize(model_path) > 1_000_000:  # Check for files larger than 1MB
+    try:
+        with open(model_path, 'rb') as f:
+            model = pickle.load(f)
+    except pickle.UnpicklingError:
+        st.error("Error loading the model. The file might be corrupted.")
+else:
+    st.error("Model download failed or the file is too small.")
+
+# Load the model using pickle
+with open(model_path, 'rb') as f:
+    model = pickle.load(f)
 # Load the model
-model = pickle.load(open('player_ratings_prediction.pickle', 'rb'))
+#model = pickle.load(open('player_ratings_prediction.pickle', 'rb'))
 
 # Load the columns from the JSON file
 with open('model_columns.json', 'r') as file:
