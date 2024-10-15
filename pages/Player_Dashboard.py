@@ -498,7 +498,7 @@ if selected_pass_type == 'Progressive Passes':
 
 elif selected_pass_type == 'Passes':
     st.write(f"### {selected_player} Crosses")
-    main_minerva.passmaps(passes_df, team, selected_player, pitch, 'Passes')
+    main_minerva.passmaps(passes_df, team, selected_player, pitch, 'Crosses')
 
 elif selected_pass_type == 'Crosses':
     st.write(f"### {selected_player} Crosses")
