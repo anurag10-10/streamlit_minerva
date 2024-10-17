@@ -14,14 +14,14 @@ import os
 import requests
 
 @st.cache
-def fetch_csv_from_drive(url):
+def fetch_csv_from_cloud(url):
     response = requests.get(url)
     if response.status_code == 200:
         # Convert content to a pandas DataFrame
         df = pd.read_csv(url)
         return df
     else:
-        st.error("Failed to fetch the CSV file from Google Drive")
+        st.error("Failed to fetch the data")
         return None
 
 # Access the secret links
@@ -29,8 +29,8 @@ drive_csv_url_1 = st.secrets["google_drive"]["csv_file_1"]
 drive_csv_url_2 = st.secrets["google_drive"]["csv_file_2"]
 
 # Fetch CSV files from Google Drive
-df1 = fetch_csv_from_drive(drive_csv_url_1)
-df2 = fetch_csv_from_drive(drive_csv_url_2)
+df1 = fetch_csv_from_cloud(drive_csv_url_1)
+df2 = fetch_csv_from_cloud(drive_csv_url_2)
 
 team_name1 = df1['Team'].iloc[0]
 team_name2 = df2['Team'].iloc[0]
@@ -100,8 +100,8 @@ with open('model_columns.json', 'r') as file:
     model_columns = json.load(file)
 
 # Load event data for both teams (replace with actual file paths)
-df_team1 = pd.read_csv('Minerva_vs_Sudeva_Minerva_data.csv')
-df_team2 = pd.read_csv('Minerva_vs_Sudeva_Sudeva_data.csv')
+df_team1 = fetch_csv_from_cloud(drive_csv_url_1)
+df_team2 = fetch_csv_from_cloud(drive_csv_url_2)
 
 df1 = main_minerva.process_data(df_team1)
 df2 = main_minerva.process_data(df_team2)
