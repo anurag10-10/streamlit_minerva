@@ -594,7 +594,7 @@ def passmaps(df_pass, team, player, pitch, pass_type):
         col3.metric(label="Passing accuracy", value=f'{pass_accuracy}%')#, delta= f'{thresh}%')
 
         # Create a new pitch for passes
-        pitch = VerticalPitch(pitch_color='#a5c771', line_color='white', positional=False, stripe=True, corner_arcs=True)
+        pitch = VerticalPitch(pitch_color='grass', line_color='white', positional=False, stripe=True, corner_arcs=True)
         fig_pass_map, ax_pass_map = pitch.draw(figsize=(8, 4))  # Smaller figure size
 
         # Plot completed passes
