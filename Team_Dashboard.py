@@ -16,7 +16,7 @@ st.set_page_config(
 )
 
 @st.cache
-def fetch_csv_from_drive(url):
+def fetch_csv_from_cloud(url):
     response = requests.get(url)
     if response.status_code == 200:
         # Convert content to a pandas DataFrame
@@ -31,8 +31,8 @@ drive_csv_url_1 = st.secrets["google_drive"]["csv_file_1"]
 drive_csv_url_2 = st.secrets["google_drive"]["csv_file_2"]
 
 # Fetch CSV files from Google Drive
-df_team1 = fetch_csv_from_drive(drive_csv_url_1)
-df_team2 = fetch_csv_from_drive(drive_csv_url_2)
+df_team1 = fetch_csv_from_cloud(drive_csv_url_1)
+df_team2 = fetch_csv_from_cloud(drive_csv_url_2)
 
 # Assuming df_team1 and df_team2 have the 'Team' column that contains the team names
 team_name1 = df_team1['Team'].iloc[0]
