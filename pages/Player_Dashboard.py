@@ -238,6 +238,8 @@ with col3:
 shotmap_df1 = df1[df1['Event'] == 'Shot']
 shotmap_df2 = df2[df2['Event'] == 'Shot']
 
+col1, col2 = st.columns(2)
+
 # Define a function to process shot data
 def process_shots_df(df):
     """
