@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from matplotlib import patheffects as path_effects
 from mplsoccer import VerticalPitch, Pitch
 import streamlit as st
+from matplotlib.colors import to_rgba
+
 
 def process_data(dataframe):
     # Regular expression pattern to extract minutes and seconds
@@ -66,6 +68,127 @@ def add_passer_recipient_columns(df, event_col='Event', outcome_col='Outcome', j
     df['Passer'] = passer_list
 
     return df
+
+#Average locations
+# Combined function for filtering events and calculating average locations
+def avg_loc_for_teams(df_team1, df_team2):
+    # Define the list of all events and defensive events
+    all_events_list = ['Pass', 'Long Kick', 'Goal Kick', 'Offensive Duel',
+                       'Defensive Duel', 'Interception', 'Pressure',
+                       'Air Duel', 'Throw In', 'LBD', 'Touch', 
+                       'Shot', 'Head Pass', 'Save', 'Foul', 
+                       'Hand Pass', 'Carry', 'Cross']
+    
+    def_events_list = ['Defensive Duel', 'Interception', 'Pressure',
+                       'Air Duel', 'LBD', 'Save', 'Foul']
+    
+    def calculate_avg_locations(df, events_list):
+        # Filter the DataFrame based on the provided events list
+        filtered_df = df[df['Event'].isin(events_list)].copy()
+        
+        # Calculate average locations based on filtered events
+        average_locations = filtered_df.groupby('Jersey').agg({'X': ['mean'], 'Y': ['mean', 'count']})
+        average_locations.columns = ['X', 'Y', 'count']
+        
+        return average_locations
+    
+    # Calculate average locations for team 1 (all events and defensive events)
+    avg_team1_all_events = calculate_avg_locations(df_team1, all_events_list)
+    avg_team1_def_events = calculate_avg_locations(df_team1, def_events_list)
+    
+    # Calculate average locations for team 2 (all events and defensive events)
+    avg_team2_all_events = calculate_avg_locations(df_team2, all_events_list)
+    avg_team2_def_events = calculate_avg_locations(df_team2, def_events_list)
+    
+    return avg_team1_all_events, avg_team1_def_events, avg_team2_all_events, avg_team2_def_events
+
+#avg pos viz
+
+def avg_positions(average_locations, col, team):
+    pitch = VerticalPitch(pitch_type='statsbomb', pitch_color='grass', line_color='white', stripe=True)
+    fig, ax = pitch.draw(figsize=(16, 11), constrained_layout=True, tight_layout=False)
+    fig.set_facecolor("#ffffff")
+    
+    MAX_MARKER_SIZE = 2000
+    average_locations['marker_size'] = (average_locations['count'] / average_locations['count'].max() * MAX_MARKER_SIZE)
+    
+    # Plot the average locations as scatter points
+    pass_nodes = pitch.scatter(average_locations.X, average_locations.Y,
+                               s=average_locations['marker_size'],
+                               color=col, edgecolors='white', linewidth=1, alpha=1, ax=ax)
+    
+    # Annotate the player positions with their jersey numbers
+    for index, row in average_locations.iterrows():
+        pitch.annotate(row.name, xy=(row.X, row.Y), c='black', va='center',
+                       ha='center', size=16, weight='bold', ax=ax)
+    
+    fig.suptitle(f'{team} average locations', fontsize=15)
+    # Show the plot
+    st.pyplot(fig)
+
+# Passing networks function
+
+def visualize_passing_network(df_test, team, col):
+    # Filter events to get substitutions and passes
+    subs = df_test[df_test['Event'] == 'Subbed Out']
+    subs = subs['Minutes']
+    firstSub = subs.min()
+
+    passes = df_test[df_test['Event'].isin(['Pass', 'Long Kick', 'Head Pass'])]
+    complete = passes[passes['Outcome'] == 'Complete']
+    complete_sub = complete[complete['Minutes'] < firstSub]
+
+    # Assign EventID to detect consecutive passes
+    complete_sub['EventID'] = (complete_sub['Event'] != complete_sub['Event'].shift()).cumsum()
+
+    # Calculate average locations for each passer
+    average_locations = complete_sub.groupby('Passer').agg({'X': ['mean'], 'Y': ['mean', 'count']})
+    average_locations.columns = ['X', 'Y', 'count']
+
+    # Count passes between players
+    pass_between = complete_sub.groupby(['Passer', 'Recipient']).EventID.count().reset_index()
+    pass_between.rename({'EventID': 'pass_count'}, axis='columns', inplace=True)
+
+    # Merge average locations with pass data for Passer and Recipient
+    pass_between = pass_between.merge(average_locations, left_on='Passer', right_index=True)
+    pass_between = pass_between.merge(average_locations, left_on='Recipient', right_index=True, suffixes=['', '_end'])
+
+    # Adjust visual sizes for passes and markers
+    MAX_LINE_WIDTH = 10
+    MAX_MARKER_SIZE = 2000
+    pass_between['width'] = (pass_between.pass_count / pass_between.pass_count.max() * MAX_LINE_WIDTH)
+    average_locations['marker_size'] = (average_locations['count'] / average_locations['count'].max() * MAX_MARKER_SIZE)
+
+    # Set transparency for pass lines based on pass counts
+    MIN_TRANSPARENCY = 0.3
+    color = np.array(to_rgba('white'))
+    color = np.tile(color, (len(pass_between), 1))
+    c_transparency = pass_between.pass_count / pass_between.pass_count.max()
+    c_transparency = (c_transparency * (1 - MIN_TRANSPARENCY)) + MIN_TRANSPARENCY
+    color[:, 3] = c_transparency
+
+    # Create the pitch and plot the passing network
+    pitch = VerticalPitch(pitch_type='statsbomb', pitch_color='grass', line_color='white', stripe=True, corner_arcs=True)
+    fig, ax = pitch.draw(figsize=(16, 11), constrained_layout=True, tight_layout=False)
+    fig.set_facecolor("#ffffff")
+
+    # Draw the pass lines and scatter the player positions
+    pass_lines = pitch.lines(pass_between.X, pass_between.Y, pass_between.X_end, pass_between.Y_end,
+                             lw=pass_between.width, color=color, zorder=1, ax=ax)
+    pass_nodes = pitch.scatter(average_locations.X, average_locations.Y,
+                               s=average_locations.marker_size, color=col, edgecolors='white', linewidth=1, alpha=1, ax=ax)
+
+    # Annotate player positions with jersey numbers
+    for index, row in average_locations.iterrows():
+        pitch.annotate(row.name, xy=(row.X, row.Y), c='black', va='center',
+                       ha='center', size=14, weight='bold', ax=ax)
+
+    # Add title to the plot
+    fig.suptitle(f'{team} Passing Network', fontsize=15)
+
+    # Display the plot in the Streamlit app
+    st.pyplot(fig)        
+
 
 def calculate_player_stats(df):
     """
@@ -471,7 +594,7 @@ def passmaps(df_pass, team, player, pitch, pass_type):
         col3.metric(label="Passing accuracy", value=f'{pass_accuracy}%')#, delta= f'{thresh}%')
 
         # Create a new pitch for passes
-        pitch = Pitch(pitch_color='#a5c771', line_color='white', positional=False, stripe=True, corner_arcs=True)
+        pitch = VerticalPitch(pitch_color='#a5c771', line_color='white', positional=False, stripe=True, corner_arcs=True)
         fig_pass_map, ax_pass_map = pitch.draw(figsize=(8, 4))  # Smaller figure size
 
         # Plot completed passes
