@@ -230,7 +230,7 @@ passing_accuracy = round((accurate_passes / (inaccurate_passes + accurate_passes
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    ui.metric_card(title="Player Rating", content=f'{predicted_rating[0]:.2f}', description=f"{selected_player}", key="card1")
+    ui.metric_card(title="Player Rating", content=f'{predicted_rating[0]:.1f}', description=f"{selected_player}", key="card1")
 with col2:
     ui.metric_card(title="Passing Stats", content=f'{passing_accuracy}%', description=f"Total Passes: {inaccurate_passes + accurate_passes}", key="card2")
 with col3:
