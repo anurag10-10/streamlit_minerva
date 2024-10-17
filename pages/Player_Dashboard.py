@@ -20,6 +20,26 @@ df2 = pd.read_csv('Minerva_vs_Sudeva_Sudeva_data.csv')
 team_name1 = df1['Team'].iloc[0]
 team_name2 = df2['Team'].iloc[0]
 
+# Streamlit app starts here
+
+st.title("Player Dashboard")
+
+# Define columns for the layout
+col1, col2 = st.columns(2)
+
+# Selectbox to choose the team
+team = st.selectbox('Select a team', (team_name1, team_name2))
+
+# Selectbox to choose the team
+#team = st.selectbox('Select a team', (team_name1, team_name2))
+
+# Load the appropriate dataset based on selection
+if team == team_name1:
+   selected_player = st.selectbox('Select a player', df1[df1['Team']== team]['Player'].sort_values().unique())
+else:
+    selected_player = st.selectbox('Select a player', df2[df2['Team']== team]['Player'].sort_values().unique())
+
+
 ##########################
 # STATS AND RATINGS #
 ##########################
@@ -367,24 +387,6 @@ def shots_map(shots_df_, col, ax=None):
     ax.legend(handles=legend_elements, loc='lower left', fontsize=15)
     return fig, ax
 
-# Streamlit app starts here
-
-st.title("Player Dashboard")
-
-# Define columns for the layout
-col1, col2 = st.columns(2)
-
-# Selectbox to choose the team
-team = st.selectbox('Select a team', (team_name1, team_name2))
-
-# Selectbox to choose the team
-#team = st.selectbox('Select a team', (team_name1, team_name2))
-
-# Load the appropriate dataset based on selection
-if team == team_name1:
-   selected_player = st.selectbox('Select a player', df1[df1['Team']== team]['Player'].sort_values().unique())
-else:
-    selected_player = st.selectbox('Select a player', df2[df2['Team']== team]['Player'].sort_values().unique())
 
 # Load the appropriate dataset based on selection
 if team == team_name1:
