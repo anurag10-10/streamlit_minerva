@@ -23,6 +23,8 @@ team_name2 = df2['Team'].iloc[0]
 # Streamlit app starts here
 
 st.title("Player Dashboard")
+# Streamlit app starts here
+ui.link_button(text="Visit our Instagram", url="https://www.instagram.com/baller_metrics/?igsh=MnBkOWw0aG01MXd4%2Fstreamlit-shadcn-ui", key="link_btn")
 
 # Define columns for the layout
 col1, col2 = st.columns(2)
