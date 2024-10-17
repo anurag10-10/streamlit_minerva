@@ -486,29 +486,37 @@ pitch = VerticalPitch(pitch_type='statsbomb')
 passes_df, keypass_df, crosses_df, setpieces_df, prg_passes_df, passes_final_third_df = main_minerva.generate_pass_types(df1, df2)
 
 # Let the user select the type of passes to visualize
-pass_types = ['Passes','Progressive Passes', 'Crosses', 'Key Passes', 'Passes Entering Final 3rd']
+pass_types1 = ['Passes','Progressive Passes']
+pass_types2 = [ 'Crosses', 'Key Passes', 'Passes Entering Final 3rd']
+
+#with col1:    
+ #   selected_pass_type = st.selectbox('Select Pass Type to Visualize:', pass_types1)
 #with col2:    
-selected_pass_type = st.selectbox('Select Pass Type to Visualize:', pass_types)
+ #   selected_pass_type = st.selectbox('Select Pass Type to Visualize:', pass_types2)
 
 # Add the passmaps visualizations in the columns
-#with col2:
-if selected_pass_type == 'Progressive Passes':
-    st.write(f"### {selected_player} Progressive Passes")
-    main_minerva.passmaps(prg_passes_df, team, selected_player, pitch, 'Progressive passes')
+with col1:
+    selected_pass_type = st.selectbox('Select Pass Type to Visualize:', pass_types1)
+    if selected_pass_type == 'Progressive Passes':
+        st.write(f"### {selected_player} Progressive Passes")
+        main_minerva.passmaps(prg_passes_df, team, selected_player, pitch, 'Progressive passes')
 
-elif selected_pass_type == 'Passes':
-    st.write(f"### {selected_player} Crosses")
-    main_minerva.passmaps(passes_df, team, selected_player, pitch, 'Crosses')
+    elif selected_pass_type == 'Passes':
+        st.write(f"### {selected_player} Passes")
+        main_minerva.passmaps(passes_df, team, selected_player, pitch, 'Passes')
+with col2:
+    selected_pass_type = st.selectbox('Select Pass Type to Visualize:', pass_types2)
+    if selected_pass_type == 'Crosses':
+        st.write(f"### {selected_player} Crosses")
+        main_minerva.passmaps(crosses_df, team, selected_player, pitch, 'Crosses')
 
-elif selected_pass_type == 'Crosses':
-    st.write(f"### {selected_player} Crosses")
-    main_minerva.passmaps(crosses_df, team, selected_player, pitch, 'Crosses')
+    elif selected_pass_type == 'Key Passes':
+        st.write(f"### {selected_player} Key Passes")
+        main_minerva.passmaps(keypass_df, team, selected_player, pitch, 'Key passes')
 
-elif selected_pass_type == 'Key Passes':
-    st.write(f"### {selected_player} Key Passes")
-    main_minerva.passmaps(keypass_df, team, selected_player, pitch, 'Key passes')
+    elif selected_pass_type == 'Passes Entering Final 3rd':
+        st.write(f"### {selected_player} Passes Entering Final 3rd")
+        main_minerva.passmaps(passes_final_third_df, team, selected_player, pitch, 'Final Third')
 
-elif selected_pass_type == 'Passes Entering Final 3rd':
-    st.write(f"### {selected_player} Passes Entering Final 3rd")
-    main_minerva.passmaps(passes_final_third_df, team, selected_player, pitch, 'Final Third')
-
+st.logo("ballers_logo.png")
+st.sidebar.markdown("@baller_metrics - Follow us on Instagram")
