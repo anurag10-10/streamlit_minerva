@@ -11,11 +11,26 @@ import json
 import streamlit_shadcn_ui as ui
 import gdown
 import os
+import requests
 
+@st.cache
+def fetch_csv_from_drive(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        # Convert content to a pandas DataFrame
+        df = pd.read_csv(url)
+        return df
+    else:
+        st.error("Failed to fetch the CSV file from Google Drive")
+        return None
 
-# Load the data for both teams
-df1 = pd.read_csv("Minerva_vs_Sudeva_Minerva_data.csv")
-df2 = pd.read_csv('Minerva_vs_Sudeva_Sudeva_data.csv')
+# Access the secret links
+drive_csv_url_1 = st.secrets["google_drive"]["csv_file_1"]
+drive_csv_url_2 = st.secrets["google_drive"]["csv_file_2"]
+
+# Fetch CSV files from Google Drive
+df1 = fetch_csv_from_drive(drive_csv_url_1)
+df2 = fetch_csv_from_drive(drive_csv_url_2)
 
 team_name1 = df1['Team'].iloc[0]
 team_name2 = df2['Team'].iloc[0]
