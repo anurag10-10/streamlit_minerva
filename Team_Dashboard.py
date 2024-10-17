@@ -34,10 +34,6 @@ drive_csv_url_2 = st.secrets["google_drive"]["csv_file_2"]
 df_team1 = fetch_csv_from_drive(drive_csv_url_1)
 df_team2 = fetch_csv_from_drive(drive_csv_url_2)
 
-# Load event data for both teams
-#df_team1 = pd.read_csv('Minerva_vs_Sudeva_Minerva_data.csv')
-#df_team2 = pd.read_csv('Minerva_vs_Sudeva_Sudeva_data.csv')  # Replace with the actual file for the second team
-
 # Assuming df_team1 and df_team2 have the 'Team' column that contains the team names
 team_name1 = df_team1['Team'].iloc[0]
 team_name2 = df_team2['Team'].iloc[0]
