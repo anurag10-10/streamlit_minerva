@@ -15,7 +15,7 @@ st.set_page_config(
     layout="centered"
 )
 
-@st.cache
+@st.cache_data
 def fetch_csv_from_cloud(url):
     response = requests.get(url)
     if response.status_code == 200:
